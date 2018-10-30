@@ -40,7 +40,8 @@ func main() {
 		os.Exit(1)
 	}
 	if err := runMain(version); err != nil {
-		log.Fatal(err)
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
 	}
 }
 
@@ -54,13 +55,17 @@ func runMain(version string) error {
 	if err != nil {
 		return errgo.Mask(err)
 	}
-	defer os.RemoveAll(dir)
-	generateDir := filepath.Join(dir, "jujuapigenerate")
+	log.Printf("temp dir: %v", dir)
+	//defer os.RemoveAll(dir)
 	jujuModDir := filepath.Join(dir, "jujumod")
-
-	if err := RestoreAssets(generateDir, ""); err != nil {
+	if err := os.Mkdir(jujuModDir, 0777); err != nil {
 		return errgo.Mask(err)
 	}
+
+	if err := RestoreAssets(dir, ""); err != nil {
+		return errgo.Mask(err)
+	}
+	generateDir := filepath.Join(dir, "jujugenerateapidoc")
 
 	jujuDir, err := runCmd(generateDir, "go", "list", "-f={{.Dir}}", "-m", "github.com/juju/juju@"+version)
 	if err != nil {
@@ -82,7 +87,7 @@ func runMain(version string) error {
 	if _, err := runCmd(generateDir, "go", "build"); err != nil {
 		return errgo.Notef(err, "cannot build doc generator program")
 	}
-	cmd := exec.Command(filepath.Join(generateDir, "generate"))
+	cmd := exec.Command(filepath.Join(generateDir, "jujugenerateapidoc"))
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 	if err := cmd.Run(); err != nil {
@@ -98,7 +103,7 @@ func runCmd(dir string, exe string, args ...string) (string, error) {
 	var buf bytes.Buffer
 	c.Stdout = &buf
 	if err := c.Run(); err != nil {
-		return "", errgo.Mask(err)
+		return "", errgo.Notef(err, "cannot run %s %q in dir %q", exe, args, dir)
 	}
 	return buf.String(), nil
 }
@@ -106,10 +111,10 @@ func runCmd(dir string, exe string, args ...string) (string, error) {
 func copyFile(dst, src string) error {
 	data, err := ioutil.ReadFile(src)
 	if err != nil {
-		return errgo.Mask(err)
+		return errgo.Notef(err, "cannot read file")
 	}
 	if err := ioutil.WriteFile(dst, data, 0666); err != nil {
-		return errgo.Mask(err)
+		return errgo.Notef(err, "cannot write file")
 	}
 	return nil
 }

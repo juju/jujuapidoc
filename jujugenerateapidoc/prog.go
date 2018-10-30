@@ -31,8 +31,7 @@ import (
 
 	"github.com/juju/jujuapidoc/apidoc"
 	"github.com/rogpeppe/apicompat/jsontypes"
-	"github.com/rogpeppe/misc/runtime/debug"
-	"golang.org/x/tools/go/loader"
+	"golang.org/x/tools/go/packages"
 	"gopkg.in/errgo.v1"
 )
 
@@ -52,20 +51,21 @@ func main() {
 }
 
 func generateInfo() (*apidoc.Info, error) {
-	serverPkg := "github.com/juju/juju/apiserver"
-	cfg := loader.Config{
-		TypeCheckFuncBodies: func(string) bool {
-			return true
+	cfg := packages.Config{
+		Mode: packages.LoadAllSyntax,
+		ParseFile: func(fset *token.FileSet, filename string, src []byte) (*ast.File, error) {
+			return parser.ParseFile(fset, filename, src, parser.ParseComments)
 		},
-		ImportPkgs: map[string]bool{
-			serverPkg: false, // false means don't load tests.
-		},
-		ParserMode: parser.ParseComments,
 	}
-	prog, err := cfg.Load()
+	serverPkg := "github.com/juju/juju/apiserver"
+	pkgs, err := packages.Load(&cfg, serverPkg)
 	if err != nil {
 		return nil, errgo.Notef(err, "cannot load %q", serverPkg)
 	}
+	if len(pkgs) != 1 {
+		return nil, errgo.Newf("packages.Load returned %d packages, not 1", len(pkgs))
+	}
+	pkg := pkgs[0]
 
 	info := jsontypes.NewInfo()
 	ds := apiserver.AllFacades().ListDetails()
@@ -92,11 +92,11 @@ func generateInfo() (*apidoc.Info, error) {
 			Version:     d.Version,
 			AvailableTo: availableTo(d.Name, d.Factory),
 		}
-		pt, err := progType(prog, d.Type)
+		pt, err := progType(pkg, d.Type)
 		if err != nil {
 			return nil, errgo.Notef(err, "cannot get prog type for %v", d.Type)
 		}
-		tdoc, err := typeDocComment(prog, pt)
+		tdoc, err := typeDocComment(pkg, pt)
 		if err != nil {
 			return nil, errgo.Notef(err, "cannot get doc comment for %v: %v", d.Type)
 		}
@@ -113,7 +113,7 @@ func generateInfo() (*apidoc.Info, error) {
 			if m.Result != nil {
 				fm.Result = info.Ref(m.Result)
 			}
-			mdoc, err := methodDocComment(prog, pt, name)
+			mdoc, err := methodDocComment(pkg, pt, name)
 			if err != nil {
 				return nil, errgo.Notef(err, "cannot get doc comment for %v.%v: %v", d.Type, name)
 			}
@@ -135,7 +135,7 @@ var tmplFuncs = template.FuncMap{
 	},
 }
 
-func methodDocComment(prog *loader.Program, tname *types.TypeName, methodName string) (string, error) {
+func methodDocComment(pkg *packages.Package, tname *types.TypeName, methodName string) (string, error) {
 	t := tname.Type()
 	if !types.IsInterface(t) {
 		// Use the pointer type to get as many methods as possible.
@@ -148,7 +148,7 @@ func methodDocComment(prog *loader.Program, tname *types.TypeName, methodName st
 		return "", errgo.Newf("cannot find method %v on %v", methodName, t)
 	}
 	obj := sel.Obj()
-	decl, err := findDecl(prog, obj.Pos())
+	decl, err := findDecl(pkg, obj.Pos())
 	if err != nil {
 		return "", errgo.Mask(err)
 	}
@@ -171,7 +171,7 @@ func methodDocComment(prog *loader.Program, tname *types.TypeName, methodName st
 		return "", errgo.Newf("method definition not found in type")
 	case *ast.FuncDecl:
 		if decl.Name.Pos() != obj.Pos() {
-			return "", errgo.Newf("method definition not found (at %#v)", prog.Fset.Position(obj.Pos()))
+			return "", errgo.Newf("method definition not found (at %#v)", pkg.Fset.Position(obj.Pos()))
 		}
 		return decl.Doc.Text(), nil
 	default:
@@ -179,8 +179,8 @@ func methodDocComment(prog *loader.Program, tname *types.TypeName, methodName st
 	}
 }
 
-func typeDocComment(prog *loader.Program, t *types.TypeName) (string, error) {
-	decl, err := findDecl(prog, t.Pos())
+func typeDocComment(pkg *packages.Package, t *types.TypeName) (string, error) {
+	decl, err := findDecl(pkg, t.Pos())
 	if err != nil {
 		return "", errgo.Mask(err)
 	}
@@ -202,32 +202,38 @@ func typeDocComment(prog *loader.Program, t *types.TypeName) (string, error) {
 
 // findDecl returns the top level declaration that contains the
 // given position.
-func findDecl(prog *loader.Program, pos token.Pos) (ast.Decl, error) {
-	tokFile := prog.Fset.File(pos)
+func findDecl(pkg *packages.Package, pos token.Pos) (ast.Decl, error) {
+	tokFile := pkg.Fset.File(pos)
 	if tokFile == nil {
 		return nil, errgo.Newf("no file found for object")
 	}
 	filename := tokFile.Name()
-	for _, pkgInfo := range prog.AllPackages {
-		for _, f := range pkgInfo.Files {
-			if tokFile := prog.Fset.File(f.Pos()); tokFile == nil || tokFile.Name() != filename {
+	var found ast.Decl
+	packages.Visit([]*packages.Package{pkg}, func(pkg *packages.Package) bool {
+		for _, f := range pkg.Syntax {
+			if tokFile := pkg.Fset.File(f.Pos()); tokFile == nil || tokFile.Name() != filename {
 				continue
 			}
 			// We've found the file we're looking for. Now traverse all
 			// top level declarations looking for the right function declaration.
 			for _, decl := range f.Decls {
 				if decl.Pos() <= pos && pos <= decl.End() {
-					return decl, nil
+					found = decl
+					return false
 				}
 			}
 		}
+		return true
+	}, nil)
+	if found == nil {
+		return nil, errgo.Newf("declaration not found")
 	}
-	return nil, errgo.Newf("declaration not found")
+	return found, nil
 }
 
 // progType returns the go/types type for the given reflect.Type,
 // which must represent a named non-predeclared Go type.
-func progType(prog *loader.Program, t reflect.Type) (*types.TypeName, error) {
+func progType(pkg *packages.Package, t reflect.Type) (*types.TypeName, error) {
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
@@ -240,12 +246,19 @@ func progType(prog *loader.Program, t reflect.Type) (*types.TypeName, error) {
 		// TODO could return types.Basic type here if we needed to.
 		return nil, errgo.Newf("type %s not declared in package", t)
 	}
-	pkgInfo := prog.Package(pkgPath)
-	if pkgInfo == nil {
+	var found *packages.Package
+	packages.Visit([]*packages.Package{pkg}, func(pkg *packages.Package) bool {
+		if pkg.PkgPath == pkgPath {
+			found = pkg
+			return false
+		}
+		return true
+	}, nil)
+	if found == nil {
 		return nil, errgo.Newf("cannot find %q in imported code", pkgPath)
 	}
-	pkg := pkgInfo.Pkg
-	obj := pkg.Scope().Lookup(typeName)
+
+	obj := found.Types.Scope().Lookup(typeName)
 	if obj == nil {
 		return nil, errgo.Newf("type %s not found in %s", typeName, pkgPath)
 	}
@@ -288,7 +301,7 @@ func isAvailable(facadeName string, factory facade.Factory, kind entityKind) (ok
 		if err == nil {
 			return
 		}
-		log.Printf("panic on facade %q, role %v (%v): %s", facadeName, kind, err, debug.Callers(0, 30))
+		//log.Printf("panic on facade %q, role %v (%v): %s", facadeName, kind, err, debug.Callers(0, 30))
 		panicked[facadeName] = true
 		ok = true
 	}()
