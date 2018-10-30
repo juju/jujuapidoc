@@ -2,6 +2,8 @@ github.com/juju/juju v0.0.0-20181030015355-5e39de8318f2 h1:4sBMJDkwvDuaorQAc7Mtq
 github.com/juju/juju v0.0.0-20181030015355-5e39de8318f2/go.mod h1:NEUvYUxOAm46eq0lY9f2nkGaLHgnw99lHIsTthsiOgo=
 github.com/juju/jujuapidoc v0.0.0-20181030124119-9288991ba004 h1:Ij8Bbk0pA3MzT7Ic4kqStpIBOHZ1OSx5bocEU7ZiA68=
 github.com/juju/jujuapidoc v0.0.0-20181030124119-9288991ba004/go.mod h1:WBiqemGCmwIF1V5W+nntY3Ofr+8jZ1/sS8elU7UXQ78=
+github.com/juju/jujuapidoc v0.0.0-20181030124323-7187c08912fb h1:9V/yCfcAk9UWMm1WYJAN4Sq4IXjscYDs9dovImghEsg=
+github.com/juju/jujuapidoc v0.0.0-20181030124323-7187c08912fb/go.mod h1:WBiqemGCmwIF1V5W+nntY3Ofr+8jZ1/sS8elU7UXQ78=
 github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo=
 github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
