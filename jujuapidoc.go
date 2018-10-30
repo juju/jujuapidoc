@@ -67,6 +67,9 @@ func runMain(version string) error {
 	}
 	generateDir := filepath.Join(dir, "jujugenerateapidoc")
 
+	if _, err := runCmd(generateDir, "go", "mod", "download", "github.com/juju/juju@"+version); err != nil {
+		return errgo.Mask(err)
+	}
 	jujuDir, err := runCmd(generateDir, "go", "list", "-f={{.Dir}}", "-m", "github.com/juju/juju@"+version)
 	if err != nil {
 		return errgo.Mask(err)
