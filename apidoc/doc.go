@@ -2,7 +2,7 @@
 package apidoc
 
 import (
-	"github.com/juju/jujuapidoc/apicompat/jsontypes"
+	"github.com/rogpeppe/apicompat/jsontypes"
 )
 
 // Info holds information on the Juju RPC-based API.
