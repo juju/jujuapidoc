@@ -1,0 +1,14 @@
+github.com/juju/juju v0.0.0-20181030015355-5e39de8318f2 h1:4sBMJDkwvDuaorQAc7Mtq47rEbOyKWTFcO3dr8oMyE0=
+github.com/juju/juju v0.0.0-20181030015355-5e39de8318f2/go.mod h1:NEUvYUxOAm46eq0lY9f2nkGaLHgnw99lHIsTthsiOgo=
+github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo=
+github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
+github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
+github.com/rogpeppe/apicompat v0.0.0-20160527181554-0c51f3a3f964 h1:anjINz1NWwfWXJghH3cu9tynRcVdRSVEnYKmEEmtC14=
+github.com/rogpeppe/apicompat v0.0.0-20160527181554-0c51f3a3f964/go.mod h1:WIVOyE23fXn5S53sTLnohAd1qFvoCozNUGUxQAet5sU=
+github.com/rogpeppe/misc v0.0.0-20181018121937-d0915605ac16 h1:5va2hIacQBqbqzuoQEf0h4RJDbEQv+6cVUYsEvw/g8w=
+github.com/rogpeppe/misc v0.0.0-20181018121937-d0915605ac16/go.mod h1:hT7K6J2LNwUaaq7rtwF5VMB9kQ9yf7HgYFNVOOf41OI=
+golang.org/x/tools v0.0.0-20181030000716-a0a13e073c7b h1:Un5iKMvgLIGMzGM1mJWvi22FiMX9XB6/NOzYKoy66y8=
+golang.org/x/tools v0.0.0-20181030000716-a0a13e073c7b/go.mod h1:n7NCudcB/nEzxVGmLbDWY5pfWTLqBcC2KZ6jyYvM4mQ=
+gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
+gopkg.in/errgo.v1 v1.0.0 h1:n+7XfCyygBFb8sEjg6692xjC6Us50TFRO54+xYUEwjE=
+gopkg.in/errgo.v1 v1.0.0/go.mod h1:CxwszS/Xz1C49Ucd2i6Zil5UToP1EmyrFhKaMVbg1mk=
