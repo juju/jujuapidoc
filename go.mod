@@ -1,4 +1,4 @@
-module github.com/rogpeppe/jujuapidoc
+module github.com/juju/jujuapidoc
 
 require (
 	github.com/rogpeppe/apicompat v0.0.0-20160527181554-0c51f3a3f964
