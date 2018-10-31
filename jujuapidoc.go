@@ -23,6 +23,8 @@ import (
 	"gopkg.in/errgo.v1"
 )
 
+var showCommands = flag.Bool("x", false, "show commands that are being run")
+
 //go:generate go-bindata jujugenerateapidoc
 
 func main() {
@@ -91,6 +93,10 @@ func runMain(version string) error {
 		return errgo.Notef(err, "cannot build doc generator program")
 	}
 	cmd := exec.Command(filepath.Join(generateDir, "jujugenerateapidoc"))
+	cmd.Dir = generateDir
+	if *showCommands {
+		printShellCommand(dir, cmd.Path, cmd.Args)
+	}
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 	if err := cmd.Run(); err != nil {
@@ -100,6 +106,9 @@ func runMain(version string) error {
 }
 
 func runCmd(dir string, exe string, args ...string) (string, error) {
+	if *showCommands {
+		printShellCommand(dir, exe, args)
+	}
 	c := exec.Command(exe, args...)
 	c.Stderr = os.Stderr
 	c.Dir = dir
@@ -120,4 +129,25 @@ func copyFile(dst, src string) error {
 		return errgo.Notef(err, "cannot write file")
 	}
 	return nil
+}
+
+var outputDir string
+
+func printShellCommand(dir, name string, args []string) {
+	if dir != outputDir {
+		fmt.Fprintf(os.Stderr, "cd %s\n", shquote(dir))
+		outputDir = dir
+	}
+	var buf strings.Builder
+	buf.WriteString(name)
+	for _, arg := range args {
+		buf.WriteString(" ")
+		buf.WriteString(shquote(arg))
+	}
+	fmt.Fprintf(os.Stderr, "%s\n", buf.String())
+}
+
+func shquote(s string) string {
+	// single-quote becomes single-quote, double-quote, single-quote, double-quote, single-quote
+	return `'` + strings.Replace(s, `'`, `'"'"'`, -1) + `'`
 }
