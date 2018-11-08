@@ -20,7 +20,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"gopkg.in/errgo.v1"
+	"gopkg.in/errgo.v2/fmt/errors"
 )
 
 var showCommands = flag.Bool("x", false, "show commands that are being run")
@@ -52,45 +52,57 @@ func canUseModules() bool {
 	return err == nil
 }
 
+const jujuMod = "github.com/juju/juju"
+
 func runMain(version string) error {
 	dir, err := ioutil.TempDir("", "")
 	if err != nil {
-		return errgo.Mask(err)
+		return errors.Wrap(err)
 	}
 	log.Printf("temp dir: %v", dir)
 	//defer os.RemoveAll(dir)
 	jujuModDir := filepath.Join(dir, "jujumod")
 	if err := os.Mkdir(jujuModDir, 0777); err != nil {
-		return errgo.Mask(err)
+		return errors.Wrap(err)
 	}
 
 	if err := RestoreAssets(dir, ""); err != nil {
-		return errgo.Mask(err)
+		return errors.Wrap(err)
 	}
 	generateDir := filepath.Join(dir, "jujugenerateapidoc")
 
-	if _, err := runCmd(generateDir, "go", "mod", "download", "github.com/juju/juju@"+version); err != nil {
-		return errgo.Mask(err)
-	}
-	jujuDir, err := runCmd(generateDir, "go", "list", "-f={{.Dir}}", "-m", "github.com/juju/juju@"+version)
+	// Resolve the version first, so that it won't change underfoot.
+	resolvedModule, err := runCmd(generateDir, "go", "list", "-m", jujuMod+"@"+version)
 	if err != nil {
-		return errgo.Mask(err)
+		return errors.Notef(err, nil, "cannot resolve version number for %q", jujuMod+"@"+version)
+	}
+	resolvedModule = strings.Replace(strings.TrimSpace(resolvedModule), " ", "@", -1)
+
+	if _, err := runCmd(generateDir, "go", "mod", "download", resolvedModule); err != nil {
+		return errors.Wrap(err)
+	}
+	jujuDir, err := runCmd(generateDir, "go", "list", "-f={{.Dir}}", "-m", resolvedModule)
+	if err != nil {
+		return errors.Wrap(err)
 	}
 	jujuDir = strings.TrimSpace(jujuDir)
+	if jujuDir == "" {
+		return errors.Newf("no source directory found for %s@%s (originally %s@%s)", resolvedModule, jujuMod, version)
+	}
 	if err := copyFile(filepath.Join(jujuModDir, "Gopkg.lock"), filepath.Join(jujuDir, "Gopkg.lock")); err != nil {
-		return errgo.Mask(err)
+		return errors.Wrap(err)
 	}
 	if err := copyFile(filepath.Join(jujuModDir, "Gopkg.toml"), filepath.Join(jujuDir, "Gopkg.toml")); err != nil {
-		return errgo.Mask(err)
+		return errors.Wrap(err)
 	}
-	if _, err := runCmd(jujuModDir, "go", "mod", "init", "github.com/juju/juju"); err != nil {
-		return errgo.Mask(err)
+	if _, err := runCmd(jujuModDir, "go", "mod", "init", jujuMod); err != nil {
+		return errors.Wrap(err)
 	}
 	if _, err := runCmd(generateDir, "gomodmerge", filepath.Join(jujuModDir, "go.mod")); err != nil {
-		return errgo.Notef(err, `cannot run gomodmerge; try "go get github.com/rogpeppe/gomodmerge"`)
+		return errors.Notef(err, nil, `cannot run gomodmerge; try "go get github.com/rogpeppe/gomodmerge"`)
 	}
 	if _, err := runCmd(generateDir, "go", "build"); err != nil {
-		return errgo.Notef(err, "cannot build doc generator program")
+		return errors.Notef(err, nil, "cannot build doc generator program")
 	}
 	cmd := exec.Command(filepath.Join(generateDir, "jujugenerateapidoc"))
 	cmd.Dir = generateDir
@@ -100,7 +112,7 @@ func runMain(version string) error {
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 	if err := cmd.Run(); err != nil {
-		return errgo.Notef(err, "generate info failed")
+		return errors.Notef(err, nil, "generate info failed")
 	}
 	return nil
 }
@@ -115,7 +127,7 @@ func runCmd(dir string, exe string, args ...string) (string, error) {
 	var buf bytes.Buffer
 	c.Stdout = &buf
 	if err := c.Run(); err != nil {
-		return "", errgo.Notef(err, "cannot run %s %q in dir %q", exe, args, dir)
+		return "", errors.Notef(err, nil, "cannot run %s %q in dir %q", exe, args, dir)
 	}
 	return buf.String(), nil
 }
@@ -123,10 +135,10 @@ func runCmd(dir string, exe string, args ...string) (string, error) {
 func copyFile(dst, src string) error {
 	data, err := ioutil.ReadFile(src)
 	if err != nil {
-		return errgo.Notef(err, "cannot read file")
+		return errors.Notef(err, nil, "cannot read file")
 	}
 	if err := ioutil.WriteFile(dst, data, 0666); err != nil {
-		return errgo.Notef(err, "cannot write file")
+		return errors.Notef(err, nil, "cannot write file")
 	}
 	return nil
 }
