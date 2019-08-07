@@ -25,8 +25,8 @@ import (
 	"github.com/juju/juju/apiserver/common"
 	"github.com/juju/juju/apiserver/facade"
 	"github.com/juju/juju/permission"
-	"github.com/juju/juju/rpc/rpcreflect"
 	"github.com/juju/juju/state"
+	"github.com/juju/rpcreflect"
 	"gopkg.in/juju/names.v2"
 
 	"github.com/juju/jujuapidoc/apidoc"

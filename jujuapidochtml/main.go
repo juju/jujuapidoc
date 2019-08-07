@@ -16,7 +16,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/juju/apicompat/jsontypes"
+	"github.com/rogpeppe/apicompat/jsontypes"
 
 	"github.com/juju/jujuapidoc/apidoc"
 )
